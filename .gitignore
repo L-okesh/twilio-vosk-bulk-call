@@ -1,11 +1,8 @@
-# Python defaults
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
-*.env
-
-# Ignore models and temp files
+.env
 models/
 responses.txt
 *.wav
