@@ -1,0 +1,7 @@
+Flask
+twilio
+gunicorn
+vosk
+soundfile
+requests
+huggingface-hub
