@@ -1,87 +1,60 @@
 import os
 import logging
-import wave
 import json
 import zipfile
 import requests
-from flask import Flask, request, Response, render_template
+import wave
+
+from flask import Flask, request, Response, render_template, jsonify
 from twilio.twiml.voice_response import VoiceResponse
 from twilio.rest import Client
 from vosk import Model, KaldiRecognizer
 
-# -------------------------------
-# Flask setup
-# -------------------------------
 app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
 
 # -------------------------------
-# Twilio credentials (for testing only)
-# Replace with your real ones or use environment variables on Render
+# HARD-CODED TWILIO CREDENTIALS (FOR TESTING ONLY)
 # -------------------------------
-TWILIO_SID = "AC4dba388fb958e1b20dfed8c0394f499f"   # Your Twilio SID
-TWILIO_AUTH = "d0f66a86573bca9f8e878b88c60bc4d9"                # Your Twilio Auth Token
-TWILIO_NUMBER = "+15744657235"                      # Your Twilio phone number
+TWILIO_SID = "AC4dba388fb958e1b20dfed8c0394f499f"
+TWILIO_AUTH = "d0f66a86573bca9f8e878b88c60bc4d9"
+TWILIO_NUMBER = "+15744657235"
 
 client = Client(TWILIO_SID, TWILIO_AUTH)
 
 # -------------------------------
-# Keyword categories
-# -------------------------------
-positive_keywords = ["yes", "interested", "okay", "sure", "yeah"]
-negative_keywords = ["no", "not interested", "later", "stop"]
-
-# -------------------------------
-# Download & load Vosk model
+# Download Vosk model automatically if not found
 # -------------------------------
 def download_vosk_model():
     if not os.path.exists("models"):
         os.makedirs("models", exist_ok=True)
     model_path = "models/vosk-model-small-en-us-0.15"
     if not os.path.exists(model_path):
-        print("🔽 Downloading Vosk model (small-en)...")
+        print("Downloading Vosk model...")
         url = "https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip"
-        r = requests.get(url, stream=True)
+        r = requests.get(url)
         with open("models/model.zip", "wb") as f:
-            for chunk in r.iter_content(chunk_size=8192):
-                f.write(chunk)
-        print("✅ Extracting model...")
+            f.write(r.content)
         with zipfile.ZipFile("models/model.zip", "r") as zip_ref:
             zip_ref.extractall("models/")
         os.remove("models/model.zip")
     return model_path
 
 MODEL_PATH = download_vosk_model()
-model = Model(MODEL_PATH)
+vosk_model = Model(MODEL_PATH)
+
+positive_keywords = ["yes", "interested", "okay", "sure", "yeah"]
+negative_keywords = ["no", "not interested", "later", "stop"]
 
 # -------------------------------
-# Helper: Transcribe audio with Vosk
-# -------------------------------
-def transcribe_audio(file_path):
-    wf = wave.open(file_path, "rb")
-    rec = KaldiRecognizer(model, wf.getframerate())
-    rec.SetWords(True)
-    text = ""
-
-    while True:
-        data = wf.readframes(4000)
-        if len(data) == 0:
-            break
-        if rec.AcceptWaveform(data):
-            res = json.loads(rec.Result())
-            text += " " + res.get("text", "")
-    wf.close()
-    return text.strip()
-
-# -------------------------------
-# Home page (UI)
+# Homepage UI
 # -------------------------------
 @app.route("/", methods=["GET"])
 def home():
     return render_template("index.html")
 
 # -------------------------------
-# Bulk calling route
+# Bulk Calling Route (fixed JSON)
 # -------------------------------
 @app.route("/call", methods=["POST"])
 def bulk_call():
@@ -90,91 +63,90 @@ def bulk_call():
     call_results = []
 
     for num in numbers:
-        call = client.calls.create(
-            to=num,
-            from_=TWILIO_NUMBER,
-            url=request.url_root + "voice"
-        )
-        call_results.append({num: call.sid})
+        try:
+            call = client.calls.create(
+                to=num,
+                from_=TWILIO_NUMBER,
+                url=request.url_root + "voice"
+            )
+            call_results.append({num: call.sid})
+        except Exception as e:
+            call_results.append({num: f"Error: {str(e)}"})
 
-    return {
+    return jsonify({
         "status": "success",
         "message": f"Started {len(numbers)} calls",
         "details": call_results
-    }
+    })
 
 # -------------------------------
-# Voice endpoint (Twilio webhook)
+# When call is answered → Play intro + gather speech
 # -------------------------------
 @app.route("/voice", methods=["POST"])
 def voice():
     resp = VoiceResponse()
     resp.play(url=request.url_root + "static/intro.mp3")
-    resp.record(
-        maxLength="10",
-        action=request.url_root + "process_recording",
-        playBeep=True
+    resp.gather(
+        input="speech",
+        action=request.url_root + "gather",
+        method="POST",
+        timeout=2,
+        speechTimeout="auto"
     )
     return Response(str(resp), mimetype="application/xml")
 
 # -------------------------------
-# Process recorded voice
+# Handle speech response from caller
 # -------------------------------
-@app.route("/process_recording", methods=["POST"])
-def process_recording():
-    recording_url = request.form.get("RecordingUrl")
+@app.route("/gather", methods=["POST"])
+def gather():
+    speech = (request.form.get("SpeechResult") or "").lower()
     caller = request.form.get("To", "unknown")
-    logging.info(f"Recording received from {caller}: {recording_url}")
-
-    # Download Twilio recording (.wav)
-    audio_path = f"static/{caller.replace('+', '')}.wav"
-    r = requests.get(recording_url + ".wav")
-    with open(audio_path, "wb") as f:
-        f.write(r.content)
-
-    # Transcribe using Vosk
-    text = transcribe_audio(audio_path)
-    logging.info(f"Transcribed text: {text}")
-
-    # Categorize
-    category = "unclear"
-    if any(w in text.lower() for w in positive_keywords):
-        category = "interested"
-    elif any(w in text.lower() for w in negative_keywords):
-        category = "not interested"
+    logging.info(f"Caller {caller} said: {speech}")
 
     # Save response
     with open("responses.txt", "a") as f:
-        f.write(f"{caller}: {text} → {category}\n")
+        f.write(f"{caller}: {speech}\n")
 
-    # Respond with message
     resp = VoiceResponse()
-    if category == "interested":
+    if any(w in speech for w in positive_keywords):
         resp.play(url=request.url_root + "static/positive.mp3")
-    elif category == "not interested":
+    elif any(w in speech for w in negative_keywords):
         resp.play(url=request.url_root + "static/negative.mp3")
     else:
-        resp.say("Thank you for your response.")
+        resp.say("Sorry, I could not understand you. Please try again later.")
+
     return Response(str(resp), mimetype="application/xml")
 
 # -------------------------------
-# View responses
+# View all responses (summarized)
 # -------------------------------
 @app.route("/responses", methods=["GET"])
 def view_responses():
     if not os.path.exists("responses.txt"):
         return "<h2>No responses yet.</h2>"
 
+    summary = {}
     with open("responses.txt", "r") as f:
-        rows = [line.strip().split(":", 1) for line in f.readlines()]
+        for line in f:
+            if ":" not in line:
+                continue
+            caller, response = line.strip().split(":", 1)
+            text = response.lower()
+            if any(w in text for w in positive_keywords):
+                summary[caller] = "Interested"
+            elif any(w in text for w in negative_keywords):
+                summary[caller] = "Not Interested"
+            else:
+                summary[caller] = "Unclear"
 
     html = """
-    <h2>📞 Caller Responses</h2>
+    <h2>📋 Caller Responses</h2>
     <table border="1" cellpadding="8" cellspacing="0">
-        <tr><th>Caller</th><th>Response</th></tr>
+        <tr><th>Caller</th><th>Response Category</th></tr>
     """
-    for caller, response in rows:
-        html += f"<tr><td>{caller}</td><td>{response}</td></tr>"
+    for caller, category in summary.items():
+        html += f"<tr><td>{caller}</td><td>{category}</td></tr>"
 
     html += "</table>"
     return html
@@ -185,4 +157,3 @@ def view_responses():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port, debug=True)
-
