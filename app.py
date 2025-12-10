@@ -16,9 +16,9 @@ logging.basicConfig(level=logging.INFO)
 # ------------------------------------------
 # HARD-CODED TWILIO CREDENTIALS (TEST PURPOSES ONLY)
 # ------------------------------------------
-TWILIO_SID = "ACXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"  # ← Your Twilio SID
-TWILIO_AUTH = "your_auth_token_here"               # ← Your Twilio Auth Token
-TWILIO_NUMBER = "+1XXXXXXXXXX"                     # ← Your Twilio Number
+TWILIO_SID = "AC4dba388fb958e1b20dfed8c0394f499f"  # ← Your Twilio SID
+TWILIO_AUTH = "79cd6515c80caabfb04da8b96168759a"               # ← Your Twilio Auth Token
+TWILIO_NUMBER = "+15744657235"                     # ← Your Twilio Number
 client = Client(TWILIO_SID, TWILIO_AUTH)
 
 # ------------------------------------------
@@ -175,3 +175,4 @@ def view_responses():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port, debug=True)
+
