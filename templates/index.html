@@ -1,56 +1,28 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Twilio Bulk Call App</title>
-<style>
-body { font-family: Arial; background:#f2f2f2; text-align:center; padding-top:50px; }
-.container { background:white; padding:30px; border-radius:10px; box-shadow:0px 0px 10px #ccc; display:inline-block; }
-input[type="text"] { width:300px; padding:10px; margin-bottom:20px; border-radius:5px; border:1px solid #ccc; font-size:16px; }
-button { padding:10px 20px; margin:5px; border:none; border-radius:5px; background:#4CAF50; color:white; font-size:16px; cursor:pointer; }
-button.view { background:#2196F3; }
-button:hover { opacity:0.9; }
-#responseMessage { margin-top:20px; font-weight:bold; }
-</style>
+  <title>Bulk Call Dashboard</title>
+  <script>
+    async function startCalls(event) {
+      event.preventDefault();
+      const formData = new FormData(document.querySelector("form"));
+      const response = await fetch("/call", {
+        method: "POST",
+        body: formData
+      });
+      const data = await response.json();
+      alert(data.message);
+    }
+  </script>
 </head>
 <body>
-<div class="container">
-<h2>Twilio Bulk Call App</h2>
-<form id="callForm">
-<input type="text" id="numbers" name="numbers" placeholder="Enter numbers (comma separated)" required><br>
-<button type="submit">Call</button>
-<button type="button" class="view" onclick="window.open('/responses', '_blank')">View Responses</button>
-</form>
-<div id="responseMessage"></div>
-</div>
-
-<script>
-const form = document.getElementById('callForm');
-const responseMessage = document.getElementById('responseMessage');
-
-form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const numbers = document.getElementById('numbers').value.trim();
-    if (!numbers) return;
-    responseMessage.textContent = "Calling... Please wait.";
-
-    try {
-        const res = await fetch('/call', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({ numbers })
-        });
-        const data = await res.json();
-        if (data.status === "success") {
-            responseMessage.textContent = data.message;
-        } else {
-            responseMessage.textContent = "Something went wrong. Try again.";
-        }
-    } catch (err) {
-        responseMessage.textContent = "Error: " + err.message;
-    }
-});
-</script>
+  <h1>📞 Bulk Call Tool</h1>
+  <form onsubmit="startCalls(event)">
+    <label>Enter comma-separated verified Twilio numbers:</label><br><br>
+    <textarea name="numbers" rows="4" cols="50" placeholder="+911234567890, +919876543210"></textarea><br><br>
+    <button type="submit">Start Calls</button>
+  </form>
+  <br>
+  <a href="/responses"><button>View Responses</button></a>
 </body>
 </html>
