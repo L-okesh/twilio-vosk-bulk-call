@@ -1,7 +1,129 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Bulk Call Dashboard</title>
+  <style>
+    /* 1. Reset & Global Styles */
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+    
+    body, html {
+      height: 100%;
+      overflow: hidden; /* Keeps the focus on the dashboard */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      /* background-color: #000; */
+    }
+
+    /* 2. Video Background */
+    #bg-video {
+      position: fixed;
+      right: 0;
+      bottom: 0;
+      min-width: 100%;
+      min-height: 100%;
+      z-index: -1;
+      object-fit: cover;
+      filter: brightness(100%); /* Darkens video for readability */
+    }
+
+    /* 3. Modular Glass Card */
+    .dashboard-card {
+      background: rgba(255, 255, 255, 0.07);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 24px;
+      padding: 3rem;
+      width: 90%;
+      max-width: 500px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      text-align: center;
+    }
+
+    /* 4. Bold Typography */
+    h1 {
+      color: #fff;
+      font-size: 3rem; /* Extra Large */
+      font-weight: 900;
+      letter-spacing: -2px;
+      margin-bottom: 1.5rem;
+      text-transform: uppercase;
+    }
+
+    label {
+      color: rgba(255, 255, 255, 0.7);
+      display: block;
+      margin-bottom: 1rem;
+      font-weight: 500;
+      font-size: 0.9rem;
+    }
+
+    /* 5. Inputs & Modular Design */
+    textarea {
+      width: 100%;
+      background: rgba(0, 0, 0, 0.3);
+      border: 2px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      color: #fff;
+      padding: 15px;
+      font-size: 1rem;
+      resize: none;
+      transition: border-color 0.3s ease;
+      margin-bottom: 2rem;
+    }
+
+    textarea:focus {
+      outline: none;
+      border-color: #3b82f6; /* Modern Blue */
+    }
+
+    /* 6. High-Design Buttons */
+    .btn-container {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    button {
+      width: 100%;
+      padding: 16px;
+      border: none;
+      border-radius: 12px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .btn-primary {
+      background: #fff;
+      color: #000;
+    }
+
+    .btn-primary:hover {
+      background: #3b82f6;
+      color: #fff;
+      transform: translateY(-2px);
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: #fff;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.5);
+    }
+
+    a { text-decoration: none; }
+  </style>
   <script>
     async function startCalls(event) {
       event.preventDefault();
@@ -16,13 +138,26 @@
   </script>
 </head>
 <body>
-  <h1>📞 Bulk Call Tool</h1>
-  <form onsubmit="startCalls(event)">
-    <label>Enter comma-separated verified Twilio numbers:</label><br><br>
-    <textarea name="numbers" rows="4" cols="50" placeholder="+911234567890, +919876543210"></textarea><br><br>
-    <button type="submit">Start Calls</button>
-  </form>
-  <br>
-  <a href="/responses"><button>View Responses</button></a>
+
+  <video autoplay muted loop playsinline id="bg-video">
+    <source src="bg.mp4" type="video/mp4">
+  </video>
+
+  <div class="dashboard-card">
+    <h1>Automated Call Intelligence</h1>
+    
+    <form onsubmit="startCalls(event)">
+      <label>Enter comma-separated Twilio numbers</label>
+      <textarea name="numbers" rows="4" placeholder="+1234..., +5678..."></textarea>
+      
+      <div class="btn-container">
+        <button type="submit" class="btn-primary">Start Campaign</button>
+        <a href="/responses">
+          <button type="button" class="btn-secondary">View History</button>
+        </a>
+      </div>
+    </form>
+  </div>
+
 </body>
 </html>
